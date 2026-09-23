@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import health
+from app.api import health, tasks
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -19,11 +20,13 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(tasks.router)
 
     @app.get("/")
     async def root():
         return {"message": "EACIP API", "docs": "/docs"}
 
     return app
+
 
 app = create_app()
