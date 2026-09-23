@@ -22,4 +22,11 @@ export const tasksApi = {
     const res = await apiClient.get<TaskResponse>(`/tasks/${id}`);
     return res.data;
   },
+
+  understand: async (id: string): Promise<TaskResponse> => {
+    const res = await apiClient.post<TaskResponse>(
+      `/tasks/${id}/understand`,
+    );
+    return res.data;
+  },
 };
