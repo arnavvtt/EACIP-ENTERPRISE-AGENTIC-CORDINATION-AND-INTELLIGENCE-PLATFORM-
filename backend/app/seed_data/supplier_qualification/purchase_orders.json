@@ -1,0 +1,57 @@
+[
+  {
+    "external_id": "PO-4821",
+    "record_type": "purchase_order",
+    "data": {
+      "po_number": "PO-4821",
+      "supplier_id": "S-1042",
+      "supplier_name": "ABC Components Pvt Ltd",
+      "order_date": "2026-07-15",
+      "agreed_delivery_date": "2026-08-20",
+      "actual_delivery_date": "2026-08-27",
+      "status": "delivered_late",
+      "amount_inr": 450000,
+      "line_items": [
+        { "sku": "PCB-100", "qty": 5000, "unit_price": 90 }
+      ],
+      "delivery_terms": "Net 45",
+      "notes": "Delivered 7 days late due to raw material shortage"
+    },
+    "record_metadata": {
+      "ingested_from": "procurement-db"
+    }
+  },
+  {
+    "external_id": "PO-4830",
+    "record_type": "purchase_order",
+    "data": {
+      "po_number": "PO-4830",
+      "supplier_id": "S-1042",
+      "supplier_name": "ABC Components Pvt Ltd",
+      "order_date": "2026-08-01",
+      "agreed_delivery_date": "2026-09-05",
+      "actual_delivery_date": "2026-09-04",
+      "status": "delivered_on_time",
+      "amount_inr": 320000,
+      "delivery_terms": "Net 30"
+    },
+    "record_metadata": {
+      "ingested_from": "procurement-db"
+    }
+  },
+  {
+    "external_id": "PO-4500",
+    "record_type": "purchase_order",
+    "data": {
+      "po_number": "PO-4500",
+      "supplier_id": "S-2051",
+      "supplier_name": "XYZ Industries",
+      "order_date": "2026-05-10",
+      "status": "delivered_on_time",
+      "amount_inr": 180000
+    },
+    "record_metadata": {
+      "ingested_from": "procurement-db"
+    }
+  }
+]

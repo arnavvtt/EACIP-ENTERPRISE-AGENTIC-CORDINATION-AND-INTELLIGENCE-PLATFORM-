@@ -8,10 +8,24 @@ from app.services.task_understanding_service import (
     TaskUnderstandingError,
     TaskUnderstandingService,
 )
+from app.services.requirement_service import (
+    RequirementError,
+    RequirementService,
+)
+from app.services.retrieval_service import (
+    RetrievalError,
+    RetrievalService,
+    RetrievalSummary,
+)
 
 __all__ = [
     "TaskService",
     "TaskUnderstandingService",
     "TaskUnderstandingError",
     "TaskNotFoundError",
+    "RequirementService",
+    "RequirementError",
+    "RetrievalService",
+    "RetrievalError",
+    "RetrievalSummary",
 ]

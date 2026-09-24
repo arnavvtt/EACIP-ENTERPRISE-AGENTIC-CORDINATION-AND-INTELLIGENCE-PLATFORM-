@@ -1,0 +1,46 @@
+[
+  {
+    "external_id": "DOC-ISO-9001-ABC",
+    "record_type": "certificate",
+    "data": {
+      "title": "ISO 9001:2015 Quality Management Certificate",
+      "supplier_id": "S-1042",
+      "document_type": "certificate",
+      "issued_by": "Bureau Veritas",
+      "valid_until": "2027-03-31",
+      "status": "valid",
+      "content": "ABC Components Pvt Ltd has been audited and certified to be in compliance with ISO 9001:2015 Quality Management Systems. Certificate valid until 31 March 2027. Scope: design and manufacturing of electronic components and PCB assemblies."
+    },
+    "record_metadata": {
+      "ingested_from": "document-repo"
+    }
+  },
+  {
+    "external_id": "DOC-GST-ABC",
+    "record_type": "certificate",
+    "data": {
+      "title": "GST Registration Certificate",
+      "supplier_id": "S-1042",
+      "document_type": "certificate",
+      "issued_by": "Government of India",
+      "status": "valid",
+      "content": "GSTIN: 27AABCA1234B1Z5. Registered entity: ABC Components Private Limited. Registered address: Pune, Maharashtra. Registration type: Regular."
+    },
+    "record_metadata": {
+      "ingested_from": "document-repo"
+    }
+  },
+  {
+    "external_id": "DOC-POL-SUPQ-001",
+    "record_type": "policy",
+    "data": {
+      "title": "Supplier Qualification Policy",
+      "document_type": "policy",
+      "version": "3.2",
+      "content": "This policy defines the requirements for qualifying a new supplier. Before onboarding, the following must be verified: (1) Financial stability — credit rating of B+ or higher, and last 3 years of audited financials. (2) Compliance certifications — GST registration and ISO 9001 (or equivalent). (3) Quality history — no open critical incidents; at most 2 medium incidents in the past 12 months. (4) ESG evidence — documented environmental and social governance practices are required. (5) Delivery performance — on-time delivery rate of 90% or higher. All evidence must be verified by the procurement team before final approval. Suppliers failing any mandatory requirement must be escalated for review."
+    },
+    "record_metadata": {
+      "ingested_from": "document-repo"
+    }
+  }
+]

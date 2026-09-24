@@ -1,0 +1,45 @@
+[
+  {
+    "external_id": "S-1042",
+    "record_type": "supplier",
+    "data": {
+      "supplier_id": "S-1042",
+      "name": "ABC Components Pvt Ltd",
+      "legal_name": "ABC Components Private Limited",
+      "gstin": "27AABCA1234B1Z5",
+      "pan": "AABCA1234B",
+      "registered_city": "Pune",
+      "registered_state": "Maharashtra",
+      "country": "India",
+      "founded_year": 2015,
+      "employee_count": 240,
+      "annual_revenue_cr": 85.5,
+      "credit_rating": "A-",
+      "primary_contact": {
+        "name": "Rajesh Kumar",
+        "email": "rajesh.kumar@abccomponents.in",
+        "phone": "+91-9876543210"
+      },
+      "categories_supplied": ["electronic_components", "pcb_assembly"],
+      "is_new_supplier": true
+    },
+    "record_metadata": {
+      "ingested_from": "supplier-db",
+      "last_synced": "2026-09-20T10:00:00Z"
+    }
+  },
+  {
+    "external_id": "S-2051",
+    "record_type": "supplier",
+    "data": {
+      "supplier_id": "S-2051",
+      "name": "XYZ Industries",
+      "registered_city": "Chennai",
+      "country": "India",
+      "credit_rating": "B+"
+    },
+    "record_metadata": {
+      "ingested_from": "supplier-db"
+    }
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Supplier Master DB",
+    "source_type": "structured_db",
+    "description": "Primary supplier master with identity, financial, and contact data",
+    "connection_info": { "simulated": true, "kind": "sql" },
+    "is_active": true,
+    "source_metadata": {
+      "source_key": "supplier-db",
+      "use_case": "supplier_qualification"
+    }
+  },
+  {
+    "name": "Procurement DB",
+    "source_type": "structured_db",
+    "description": "Purchase orders, delivery records, and supplier commitments",
+    "connection_info": { "simulated": true, "kind": "sql" },
+    "is_active": true,
+    "source_metadata": {
+      "source_key": "procurement-db",
+      "use_case": "supplier_qualification"
+    }
+  },
+  {
+    "name": "Quality System",
+    "source_type": "structured_db",
+    "description": "Quality incidents, audits, and inspection results",
+    "connection_info": { "simulated": true, "kind": "sql" },
+    "is_active": true,
+    "source_metadata": {
+      "source_key": "quality-system",
+      "use_case": "supplier_qualification"
+    }
+  },
+  {
+    "name": "Document Repository",
+    "source_type": "document_store",
+    "description": "Certificates, policies, SOPs, and compliance documents",
+    "connection_info": { "simulated": true, "kind": "documents" },
+    "is_active": true,
+    "source_metadata": {
+      "source_key": "document-repo",
+      "use_case": "supplier_qualification"
+    }
+  },
+  {
+    "name": "Communication Archive",
+    "source_type": "communication",
+    "description": "Email threads and messaging history with suppliers",
+    "connection_info": { "simulated": true, "kind": "comms" },
+    "is_active": true,
+    "source_metadata": {
+      "source_key": "comms-archive",
+      "use_case": "supplier_qualification"
+    }
+  }
+]

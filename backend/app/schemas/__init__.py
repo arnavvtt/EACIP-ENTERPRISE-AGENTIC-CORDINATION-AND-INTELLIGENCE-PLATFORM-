@@ -1,8 +1,5 @@
 """
 Pydantic schemas for EACIP API.
-
-Models   = DB layer (persistence)
-Schemas  = API layer (validation & serialization)
 """
 
 from app.schemas.task import (
@@ -14,6 +11,18 @@ from app.schemas.task_understanding import (
     ExtractedEntity,
     TaskUnderstanding,
 )
+from app.schemas.requirement import (
+    IdentifyRequirementsResponse,
+    RequirementCandidate,
+    RequirementCandidatesOutput,
+    TaskRequirementListResponse,
+    TaskRequirementResponse,
+)
+from app.schemas.retrieval import (
+    RetrievedRecordListResponse,
+    RetrievedRecordResponse,
+    RunRetrievalResponse,
+)
 
 __all__ = [
     "TaskCreate",
@@ -21,4 +30,12 @@ __all__ = [
     "TaskListResponse",
     "ExtractedEntity",
     "TaskUnderstanding",
+    "RequirementCandidate",
+    "RequirementCandidatesOutput",
+    "TaskRequirementResponse",
+    "TaskRequirementListResponse",
+    "IdentifyRequirementsResponse",
+    "RetrievedRecordResponse",
+    "RetrievedRecordListResponse",
+    "RunRetrievalResponse",
 ]

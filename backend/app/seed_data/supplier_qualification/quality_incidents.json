@@ -1,0 +1,38 @@
+[
+  {
+    "external_id": "QI-101",
+    "record_type": "quality_incident",
+    "data": {
+      "incident_id": "QI-101",
+      "supplier_id": "S-1042",
+      "supplier_name": "ABC Components Pvt Ltd",
+      "date": "2026-08-27",
+      "type": "late_delivery",
+      "severity": "medium",
+      "description": "Late delivery for PO-4821. 7 days delay.",
+      "resolution": "Supplier committed to buffer stock for future orders",
+      "status": "closed"
+    },
+    "record_metadata": {
+      "ingested_from": "quality-system"
+    }
+  },
+  {
+    "external_id": "QI-102",
+    "record_type": "quality_incident",
+    "data": {
+      "incident_id": "QI-102",
+      "supplier_id": "S-1042",
+      "supplier_name": "ABC Components Pvt Ltd",
+      "date": "2026-06-15",
+      "type": "minor_defect",
+      "severity": "low",
+      "description": "2 out of 5000 PCBs had minor soldering defects",
+      "resolution": "Replacement issued, supplier improved QC",
+      "status": "closed"
+    },
+    "record_metadata": {
+      "ingested_from": "quality-system"
+    }
+  }
+]

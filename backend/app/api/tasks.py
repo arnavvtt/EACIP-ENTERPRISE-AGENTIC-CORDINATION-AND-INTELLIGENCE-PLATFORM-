@@ -2,25 +2,47 @@
 Task API routes.
 
 Endpoints:
-- POST   /tasks              Create a new task
-- GET    /tasks              List tasks (paginated)
-- GET    /tasks/{task_id}    Get a single task
-- POST   /tasks/{task_id}/understand
-                             Run task understanding on the task
+- POST   /tasks                                    Create a new task
+- GET    /tasks                                    List tasks
+- GET    /tasks/{task_id}                          Get a single task
+- POST   /tasks/{task_id}/understand               Run task understanding
+- POST   /tasks/{task_id}/identify-requirements    Identify requirements
+- GET    /tasks/{task_id}/requirements             Fetch requirements
+- POST   /tasks/{task_id}/retrieve                 Run retrieval
+- GET    /tasks/{task_id}/retrieved-records        Fetch retrieved records
 """
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.repositories import (
+    RequirementRepository,
+    RetrievedRecordRepository,
+)
+from app.schemas.requirement import (
+    IdentifyRequirementsResponse,
+    TaskRequirementListResponse,
+    TaskRequirementResponse,
+)
+from app.schemas.retrieval import (
+    RetrievedRecordListResponse,
+    RetrievedRecordResponse,
+    RunRetrievalResponse,
+)
 from app.schemas.task import (
     TaskCreate,
     TaskListResponse,
     TaskResponse,
 )
 from app.services import (
+    RequirementError,
+    RequirementService,
+    RetrievalError,
+    RetrievalService,
     TaskNotFoundError,
     TaskService,
     TaskUnderstandingError,
@@ -44,8 +66,32 @@ def get_understanding_service(
     return TaskUnderstandingService(db)
 
 
+def get_requirement_service(
+    db: AsyncSession = Depends(get_db),
+) -> RequirementService:
+    return RequirementService(db)
+
+
+def get_requirement_repo(
+    db: AsyncSession = Depends(get_db),
+) -> RequirementRepository:
+    return RequirementRepository(db)
+
+
+def get_retrieval_service(
+    db: AsyncSession = Depends(get_db),
+) -> RetrievalService:
+    return RetrievalService(db)
+
+
+def get_retrieved_repo(
+    db: AsyncSession = Depends(get_db),
+) -> RetrievedRecordRepository:
+    return RetrievedRecordRepository(db)
+
+
 # ---------------------------------------------------------------------
-# Routes
+# Task basics
 # ---------------------------------------------------------------------
 
 @router.post(
@@ -97,6 +143,10 @@ async def get_task(
     return TaskResponse.model_validate(task)
 
 
+# ---------------------------------------------------------------------
+# Task Understanding
+# ---------------------------------------------------------------------
+
 @router.post(
     "/{task_id}/understand",
     response_model=TaskResponse,
@@ -106,10 +156,6 @@ async def understand_task(
     task_id: UUID,
     service: TaskUnderstandingService = Depends(get_understanding_service),
 ) -> TaskResponse:
-    """
-    Analyze the task using the LLM and persist the structured understanding
-    (intent, use_case, entities, confidence, rationale).
-    """
     try:
         task = await service.understand_task(task_id)
     except TaskNotFoundError:
@@ -123,3 +169,98 @@ async def understand_task(
             detail=f"Task understanding failed: {e}",
         )
     return TaskResponse.model_validate(task)
+
+
+# ---------------------------------------------------------------------
+# Requirements
+# ---------------------------------------------------------------------
+
+@router.post(
+    "/{task_id}/identify-requirements",
+    response_model=IdentifyRequirementsResponse,
+    summary="Identify requirements for a task",
+)
+async def identify_requirements(
+    task_id: UUID,
+    service: RequirementService = Depends(get_requirement_service),
+    repo: RequirementRepository = Depends(get_requirement_repo),
+) -> IdentifyRequirementsResponse:
+    try:
+        await service.identify_requirements(task_id)
+    except RequirementError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    requirements = await repo.get_by_task_id(task_id)
+    return IdentifyRequirementsResponse(
+        task_id=task_id,
+        total_requirements=len(requirements),
+        identified_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.get(
+    "/{task_id}/requirements",
+    response_model=TaskRequirementListResponse,
+    summary="Get requirements for a task",
+)
+async def get_requirements(
+    task_id: UUID,
+    repo: RequirementRepository = Depends(get_requirement_repo),
+) -> TaskRequirementListResponse:
+    requirements = await repo.get_by_task_id(task_id)
+    return TaskRequirementListResponse(
+        requirements=[
+            TaskRequirementResponse.model_validate(r) for r in requirements
+        ],
+        total=len(requirements),
+    )
+
+
+# ---------------------------------------------------------------------
+# Retrieval
+# ---------------------------------------------------------------------
+
+@router.post(
+    "/{task_id}/retrieve",
+    response_model=RunRetrievalResponse,
+    summary="Run retrieval for a task",
+)
+async def run_retrieval(
+    task_id: UUID,
+    service: RetrievalService = Depends(get_retrieval_service),
+) -> RunRetrievalResponse:
+    try:
+        summary = await service.retrieve_for_task(task_id)
+    except RetrievalError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    return RunRetrievalResponse(
+        task_id=summary.task_id,
+        total_retrieved=summary.total_retrieved,
+        requirements_processed=summary.requirements_processed,
+        requirements_skipped=summary.requirements_skipped,
+        sources_used=summary.sources_used,
+        run_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.get(
+    "/{task_id}/retrieved-records",
+    response_model=RetrievedRecordListResponse,
+    summary="Get retrieved records for a task",
+)
+async def get_retrieved_records(
+    task_id: UUID,
+    repo: RetrievedRecordRepository = Depends(get_retrieved_repo),
+) -> RetrievedRecordListResponse:
+    records = await repo.get_by_task_id(task_id)
+    return RetrievedRecordListResponse(
+        records=[
+            RetrievedRecordResponse.model_validate(r) for r in records
+        ],
+        total=len(records),
+    )

@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
 
+    # ------------------------------------------------------------------
+    # Requirement Engine
+    # ------------------------------------------------------------------
+    llm_requirement_confidence_threshold: float = 0.6
+    """Reject LLM candidates below this confidence (0.0 - 1.0)."""
+
+    llm_max_requirement_candidates: int = 5
+    """Max number of candidate requirements the LLM may return."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
