@@ -8,10 +8,12 @@ from app.repositories.retrieved_record_repository import (
     RetrievedRecordRepository,
 )
 from app.repositories.source_repository import SourceRepository
+from app.repositories.correlation_repository import CorrelationRepository
 
 __all__ = [
     "TaskRepository",
     "RequirementRepository",
     "RetrievedRecordRepository",
     "SourceRepository",
+    "CorrelationRepository",
 ]

@@ -118,7 +118,6 @@ export default function TaskDetail() {
   const colors = statusColor(task.status);
   const understandingData = (task.task_metadata?.understanding as any) || null;
 
-  // group retrieved by source_key for display
   const grouped: Record<string, RetrievedRecord[]> = {};
   for (const r of retrieved) {
     const key = r.retrieval_metadata.source_key || "unknown";
@@ -161,6 +160,27 @@ export default function TaskDetail() {
         <h2 style={h2Style}>Description</h2>
         <p style={{ lineHeight: 1.6, color: "#374151" }}>{task.description}</p>
       </div>
+
+      {/* Open Context Workspace */}
+      {task.use_case && (
+        <div style={{ marginTop: "1rem" }}>
+          <Link
+            to={`/tasks/${task.id}/workspace`}
+            style={{
+              display: "inline-block",
+              padding: "0.7rem 1.4rem",
+              background: "#0891b2",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: "6px",
+              fontWeight: 500,
+              fontSize: "0.95rem",
+            }}
+          >
+            Open Context Workspace →
+          </Link>
+        </div>
+      )}
 
       {/* Understanding */}
       <div style={cardStyle}>
@@ -271,7 +291,9 @@ export default function TaskDetail() {
                       {r.description}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
+                  <div
+                    style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}
+                  >
                     {r.is_mandatory ? (
                       <span style={badge("#fee2e2", "#991b1b")}>
                         mandatory

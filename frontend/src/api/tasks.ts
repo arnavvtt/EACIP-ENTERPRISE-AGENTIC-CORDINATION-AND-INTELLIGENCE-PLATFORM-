@@ -1,7 +1,10 @@
 import { apiClient } from "./client";
 import type {
+  ContextWorkspaceResponse,
+  CorrelationListResponse,
   IdentifyRequirementsResponse,
   RetrievedRecordListResponse,
+  RunCorrelationResponse,
   RunRetrievalResponse,
   TaskCreate,
   TaskListResponse,
@@ -64,6 +67,27 @@ export const tasksApi = {
   ): Promise<RetrievedRecordListResponse> => {
     const res = await apiClient.get<RetrievedRecordListResponse>(
       `/tasks/${id}/retrieved-records`,
+    );
+    return res.data;
+  },
+
+  correlate: async (id: string): Promise<RunCorrelationResponse> => {
+    const res = await apiClient.post<RunCorrelationResponse>(
+      `/tasks/${id}/correlate`,
+    );
+    return res.data;
+  },
+
+  getCorrelations: async (id: string): Promise<CorrelationListResponse> => {
+    const res = await apiClient.get<CorrelationListResponse>(
+      `/tasks/${id}/correlations`,
+    );
+    return res.data;
+  },
+
+  getContext: async (id: string): Promise<ContextWorkspaceResponse> => {
+    const res = await apiClient.get<ContextWorkspaceResponse>(
+      `/tasks/${id}/context`,
     );
     return res.data;
   },

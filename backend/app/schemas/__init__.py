@@ -23,6 +23,12 @@ from app.schemas.retrieval import (
     RetrievedRecordResponse,
     RunRetrievalResponse,
 )
+from app.schemas.correlation import (
+    CorrelationListResponse,
+    CorrelationResponse,
+    RunCorrelationResponse,
+)
+from app.schemas.context_workspace import ContextWorkspaceResponse
 
 __all__ = [
     "TaskCreate",
@@ -38,4 +44,8 @@ __all__ = [
     "RetrievedRecordResponse",
     "RetrievedRecordListResponse",
     "RunRetrievalResponse",
+    "CorrelationResponse",
+    "CorrelationListResponse",
+    "RunCorrelationResponse",
+    "ContextWorkspaceResponse",
 ]

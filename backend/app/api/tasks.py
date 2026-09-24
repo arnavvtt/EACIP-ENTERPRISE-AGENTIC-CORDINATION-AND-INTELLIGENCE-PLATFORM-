@@ -10,6 +10,9 @@ Endpoints:
 - GET    /tasks/{task_id}/requirements             Fetch requirements
 - POST   /tasks/{task_id}/retrieve                 Run retrieval
 - GET    /tasks/{task_id}/retrieved-records        Fetch retrieved records
+- POST   /tasks/{task_id}/correlate                Run correlation
+- GET    /tasks/{task_id}/correlations             Fetch correlations
+- GET    /tasks/{task_id}/context                  Aggregated context workspace
 """
 
 from datetime import datetime, timezone
@@ -20,8 +23,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.repositories import (
+    CorrelationRepository,
     RequirementRepository,
     RetrievedRecordRepository,
+)
+from app.schemas.context_workspace import ContextWorkspaceResponse
+from app.schemas.correlation import (
+    CorrelationListResponse,
+    CorrelationResponse,
+    RunCorrelationResponse,
 )
 from app.schemas.requirement import (
     IdentifyRequirementsResponse,
@@ -39,6 +49,8 @@ from app.schemas.task import (
     TaskResponse,
 )
 from app.services import (
+    CorrelationError,
+    CorrelationService,
     RequirementError,
     RequirementService,
     RetrievalError,
@@ -88,6 +100,18 @@ def get_retrieved_repo(
     db: AsyncSession = Depends(get_db),
 ) -> RetrievedRecordRepository:
     return RetrievedRecordRepository(db)
+
+
+def get_correlation_service(
+    db: AsyncSession = Depends(get_db),
+) -> CorrelationService:
+    return CorrelationService(db)
+
+
+def get_correlation_repo(
+    db: AsyncSession = Depends(get_db),
+) -> CorrelationRepository:
+    return CorrelationRepository(db)
 
 
 # ---------------------------------------------------------------------
@@ -263,4 +287,88 @@ async def get_retrieved_records(
             RetrievedRecordResponse.model_validate(r) for r in records
         ],
         total=len(records),
+    )
+
+
+# ---------------------------------------------------------------------
+# Correlation
+# ---------------------------------------------------------------------
+
+@router.post(
+    "/{task_id}/correlate",
+    response_model=RunCorrelationResponse,
+    summary="Run correlation for a task",
+)
+async def run_correlation(
+    task_id: UUID,
+    service: CorrelationService = Depends(get_correlation_service),
+) -> RunCorrelationResponse:
+    try:
+        summary = await service.correlate_for_task(task_id)
+    except CorrelationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    return RunCorrelationResponse(
+        task_id=summary.task_id,
+        total_correlations=summary.total_correlations,
+        anchor_external_id=summary.anchor_external_id,
+        basis_breakdown=summary.basis_breakdown,
+        run_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.get(
+    "/{task_id}/correlations",
+    response_model=CorrelationListResponse,
+    summary="Get correlations for a task",
+)
+async def get_correlations(
+    task_id: UUID,
+    repo: CorrelationRepository = Depends(get_correlation_repo),
+) -> CorrelationListResponse:
+    rows = await repo.get_by_task_id(task_id)
+    return CorrelationListResponse(
+        correlations=[CorrelationResponse.model_validate(r) for r in rows],
+        total=len(rows),
+    )
+
+
+# ---------------------------------------------------------------------
+# Context Workspace (aggregated view)
+# ---------------------------------------------------------------------
+
+@router.get(
+    "/{task_id}/context",
+    response_model=ContextWorkspaceResponse,
+    summary="Aggregated context workspace for a task",
+)
+async def get_context_workspace(
+    task_id: UUID,
+    task_service: TaskService = Depends(get_task_service),
+    req_repo: RequirementRepository = Depends(get_requirement_repo),
+    ret_repo: RetrievedRecordRepository = Depends(get_retrieved_repo),
+    corr_repo: CorrelationRepository = Depends(get_correlation_repo),
+) -> ContextWorkspaceResponse:
+    task = await task_service.get_task(task_id)
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+    requirements = await req_repo.get_by_task_id(task_id)
+    retrieved = await ret_repo.get_by_task_id(task_id)
+    correlations = await corr_repo.get_by_task_id(task_id)
+    return ContextWorkspaceResponse(
+        task=TaskResponse.model_validate(task),
+        requirements=[
+            TaskRequirementResponse.model_validate(r) for r in requirements
+        ],
+        retrieved_records=[
+            RetrievedRecordResponse.model_validate(r) for r in retrieved
+        ],
+        correlations=[
+            CorrelationResponse.model_validate(c) for c in correlations
+        ],
     )

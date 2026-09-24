@@ -17,6 +17,11 @@ from app.services.retrieval_service import (
     RetrievalService,
     RetrievalSummary,
 )
+from app.services.correlation_service import (
+    CorrelationError,
+    CorrelationService,
+    CorrelationSummary,
+)
 
 __all__ = [
     "TaskService",
@@ -28,4 +33,7 @@ __all__ = [
     "RetrievalService",
     "RetrievalError",
     "RetrievalSummary",
+    "CorrelationService",
+    "CorrelationError",
+    "CorrelationSummary",
 ]

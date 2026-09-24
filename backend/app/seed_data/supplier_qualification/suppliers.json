@@ -4,6 +4,7 @@
     "record_type": "supplier",
     "data": {
       "supplier_id": "S-1042",
+      "supplier_name": "ABC Components",
       "name": "ABC Components Pvt Ltd",
       "legal_name": "ABC Components Private Limited",
       "gstin": "27AABCA1234B1Z5",
@@ -33,6 +34,7 @@
     "record_type": "supplier",
     "data": {
       "supplier_id": "S-2051",
+      "supplier_name": "XYZ Industries",
       "name": "XYZ Industries",
       "registered_city": "Chennai",
       "country": "India",
