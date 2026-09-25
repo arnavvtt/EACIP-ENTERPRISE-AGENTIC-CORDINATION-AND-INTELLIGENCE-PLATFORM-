@@ -13,7 +13,7 @@ from uuid import UUID
 @dataclass
 class RetrievedRecordData:
     """
-    A single retrieved record candidate.
+    A single retrieved record candidate (Stage 6 — structured/entity).
 
     NOTE: This is NOT the DB row. The service converts these into
     `retrieved_records` rows after aggregation/deduplication.
@@ -21,22 +21,46 @@ class RetrievedRecordData:
 
     source_record_id: UUID
     source_key: str
-    """Canonical source_key (e.g., 'supplier-db')."""
-
     record_type: str
-    """Record type from source_records (e.g., 'supplier', 'purchase_order')."""
-
     external_id: str
-    """Human-facing id from the source (e.g., 'S-1042', 'PO-4821')."""
-
     retrieval_method: str
-    """'entity_match' for now. Future: 'sql_query', 'vector_search'."""
-
     relevance_score: Optional[float] = None
-    """0.0-1.0 (heuristic). Higher = more confident."""
-
     match_reason: str = ""
-    """Human-readable explanation of why this record matched."""
-
     extra: dict[str, Any] = field(default_factory=dict)
-    """Retriever-specific metadata (matched entity, etc.)."""
+
+
+@dataclass
+class LexicalHit:
+    """A single result from lexical (PostgreSQL FTS) retrieval."""
+
+    chunk_id: UUID
+    source_record_id: UUID
+    chunk_index: int
+    chunk_text: str
+    rank: float
+    """PostgreSQL ts_rank_cd score (higher = more relevant)."""
+
+
+@dataclass
+class SemanticHit:
+    """A single result from semantic (vector) retrieval."""
+
+    chunk_id: UUID
+    source_record_id: UUID
+    chunk_index: int
+    chunk_text: str
+    similarity: float
+    """Cosine similarity 0.0-1.0 (higher = more similar)."""
+
+
+@dataclass
+class FusedHit:
+    """A single result after RRF fusion of lexical + semantic."""
+
+    chunk_id: UUID
+    source_record_id: UUID
+    chunk_index: int
+    chunk_text: str
+    rrf_score: float
+    lexical_rank: Optional[int] = None
+    semantic_rank: Optional[int] = None

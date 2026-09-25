@@ -8,6 +8,7 @@ from app.schemas.correlation import CorrelationResponse
 from app.schemas.requirement import TaskRequirementResponse
 from app.schemas.retrieval import RetrievedRecordResponse
 from app.schemas.task import TaskResponse
+from app.schemas.validation import ValidationResponse
 
 
 class ContextWorkspaceResponse(BaseModel):
@@ -17,3 +18,4 @@ class ContextWorkspaceResponse(BaseModel):
     requirements: list[TaskRequirementResponse]
     retrieved_records: list[RetrievedRecordResponse]
     correlations: list[CorrelationResponse] = Field(default_factory=list)
+    validations: list[ValidationResponse] = Field(default_factory=list)

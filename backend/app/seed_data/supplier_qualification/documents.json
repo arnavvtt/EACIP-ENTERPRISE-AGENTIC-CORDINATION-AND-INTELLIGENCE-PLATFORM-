@@ -21,10 +21,14 @@
     "data": {
       "title": "GST Registration Certificate",
       "supplier_id": "S-1042",
+      "supplier_name": "ABC Components",
+      "gstin": "27AABCA1234B1Z5",
+      "registered_city": "Mumbai",
+      "country": "India",
       "document_type": "certificate",
       "issued_by": "Government of India",
       "status": "valid",
-      "content": "GSTIN: 27AABCA1234B1Z5. Registered entity: ABC Components Private Limited. Registered address: Pune, Maharashtra. Registration type: Regular."
+      "content": "GSTIN: 27AABCA1234B1Z5. Registered entity: ABC Components Private Limited. Registered address: Mumbai, Maharashtra. Registration type: Regular."
     },
     "record_metadata": {
       "ingested_from": "document-repo"

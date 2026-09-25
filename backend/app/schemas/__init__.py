@@ -28,7 +28,16 @@ from app.schemas.correlation import (
     CorrelationResponse,
     RunCorrelationResponse,
 )
+from app.schemas.validation import (
+    RunValidationResponse,
+    ValidationListResponse,
+    ValidationResponse,
+)
 from app.schemas.context_workspace import ContextWorkspaceResponse
+from app.schemas.policy_retrieval import (
+    FusedChunkResponse,
+    HybridRetrievalResponse,
+)
 
 __all__ = [
     "TaskCreate",
@@ -47,5 +56,10 @@ __all__ = [
     "CorrelationResponse",
     "CorrelationListResponse",
     "RunCorrelationResponse",
+    "ValidationResponse",
+    "ValidationListResponse",
+    "RunValidationResponse",
     "ContextWorkspaceResponse",
+    "FusedChunkResponse",
+    "HybridRetrievalResponse",
 ]

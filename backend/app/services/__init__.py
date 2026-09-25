@@ -22,6 +22,21 @@ from app.services.correlation_service import (
     CorrelationService,
     CorrelationSummary,
 )
+from app.services.validation_service import (
+    ValidationError,
+    ValidationService,
+    ValidationSummary,
+)
+from app.services.chunking_service import ChunkingService, TextChunk
+from app.services.policy_ingestion_service import (
+    IngestionSummary,
+    PolicyIngestionError,
+    PolicyIngestionService,
+)
+from app.services.policy_retrieval_service import (
+    HybridRetrievalResult,
+    PolicyRetrievalService,
+)
 
 __all__ = [
     "TaskService",
@@ -36,4 +51,14 @@ __all__ = [
     "CorrelationService",
     "CorrelationError",
     "CorrelationSummary",
+    "ValidationService",
+    "ValidationError",
+    "ValidationSummary",
+    "ChunkingService",
+    "TextChunk",
+    "PolicyIngestionService",
+    "PolicyIngestionError",
+    "IngestionSummary",
+    "PolicyRetrievalService",
+    "HybridRetrievalResult",
 ]

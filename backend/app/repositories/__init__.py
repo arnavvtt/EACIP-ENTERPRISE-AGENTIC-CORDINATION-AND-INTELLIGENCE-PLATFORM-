@@ -9,6 +9,10 @@ from app.repositories.retrieved_record_repository import (
 )
 from app.repositories.source_repository import SourceRepository
 from app.repositories.correlation_repository import CorrelationRepository
+from app.repositories.validation_repository import ValidationRepository
+from app.repositories.policy_chunk_repository import (
+    PolicyChunkRepository,
+)
 
 __all__ = [
     "TaskRepository",
@@ -16,4 +20,6 @@ __all__ = [
     "RetrievedRecordRepository",
     "SourceRepository",
     "CorrelationRepository",
+    "ValidationRepository",
+    "PolicyChunkRepository",
 ]

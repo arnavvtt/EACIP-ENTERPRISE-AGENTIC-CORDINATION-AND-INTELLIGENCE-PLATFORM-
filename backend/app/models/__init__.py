@@ -19,6 +19,7 @@ from app.models.workflow import Workflow, WorkflowStep
 from app.models.assignment import Assignment
 from app.models.information_request import InformationRequest
 from app.models.audit_log import AuditLog
+from app.models.policy_chunk import PolicyChunk
 
 __all__ = [
     "TimestampMixin",
@@ -37,4 +38,5 @@ __all__ = [
     "Assignment",
     "InformationRequest",
     "AuditLog",
+    "PolicyChunk",
 ]
