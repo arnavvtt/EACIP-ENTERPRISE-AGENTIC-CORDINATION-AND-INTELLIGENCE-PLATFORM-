@@ -91,4 +91,28 @@ export const tasksApi = {
     );
     return res.data;
   },
+
+  // Stage 11 - Package
+  generatePackage: async (id: string) => {
+    const res = await apiClient.post(`/tasks/${id}/generate-package`);
+    return res.data;
+  },
+
+  getPackage: async (id: string) => {
+    const res = await apiClient.get(`/tasks/${id}/package`);
+    return res.data;
+  },
+
+  // Stage 12 - Human Review (NAYA)
+  submitReview: async (
+    id: string,
+    decision: "approved" | "rejected",
+    comments: string,
+  ) => {
+    const res = await apiClient.post(`/tasks/${id}/review`, {
+      decision,
+      comments,
+    });
+    return res.data;
+  },
 };

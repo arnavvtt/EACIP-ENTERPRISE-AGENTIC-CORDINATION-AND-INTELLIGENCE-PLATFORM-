@@ -38,6 +38,8 @@ from app.schemas.policy_retrieval import (
     FusedChunkResponse,
     HybridRetrievalResponse,
 )
+from app.schemas.package import PackageGenerateResponse, PackageResponse
+from app.schemas.review import ReviewCreate, ReviewResponse  # NAYA IMPORT
 
 __all__ = [
     "TaskCreate",
@@ -62,4 +64,8 @@ __all__ = [
     "ContextWorkspaceResponse",
     "FusedChunkResponse",
     "HybridRetrievalResponse",
+    "PackageGenerateResponse",
+    "PackageResponse",
+    "ReviewCreate",      # NAYA
+    "ReviewResponse",    # NAYA
 ]

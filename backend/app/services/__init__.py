@@ -38,6 +38,12 @@ from app.services.policy_retrieval_service import (
     PolicyRetrievalService,
 )
 
+# NAYA IMPORT
+from app.services.package_generator_service import (
+    PackageGeneratorError,
+    PackageGeneratorService,
+)
+
 __all__ = [
     "TaskService",
     "TaskUnderstandingService",
@@ -61,4 +67,7 @@ __all__ = [
     "IngestionSummary",
     "PolicyRetrievalService",
     "HybridRetrievalResult",
+    # NAYA EXPORT
+    "PackageGeneratorService",
+    "PackageGeneratorError",
 ]

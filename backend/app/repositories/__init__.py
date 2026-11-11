@@ -13,6 +13,8 @@ from app.repositories.validation_repository import ValidationRepository
 from app.repositories.policy_chunk_repository import (
     PolicyChunkRepository,
 )
+from app.repositories.package_repository import PackageRepository
+from app.repositories.review_repository import ReviewRepository  # NAYA IMPORT
 
 __all__ = [
     "TaskRepository",
@@ -22,4 +24,6 @@ __all__ = [
     "CorrelationRepository",
     "ValidationRepository",
     "PolicyChunkRepository",
+    "PackageRepository",
+    "ReviewRepository",  # NAYA
 ]

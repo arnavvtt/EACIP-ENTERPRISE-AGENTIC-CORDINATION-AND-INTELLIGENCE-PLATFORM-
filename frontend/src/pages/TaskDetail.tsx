@@ -161,9 +161,9 @@ export default function TaskDetail() {
         <p style={{ lineHeight: 1.6, color: "#374151" }}>{task.description}</p>
       </div>
 
-      {/* Open Context Workspace */}
+      {/* Action Buttons */}
       {task.use_case && (
-        <div style={{ marginTop: "1rem" }}>
+        <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
           <Link
             to={`/tasks/${task.id}/workspace`}
             style={{
@@ -178,6 +178,22 @@ export default function TaskDetail() {
             }}
           >
             Open Context Workspace →
+          </Link>
+
+          <Link
+            to={`/tasks/${task.id}/package`}
+            style={{
+              display: "inline-block",
+              padding: "0.7rem 1.4rem",
+              background: "#4f46e5",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: "6px",
+              fontWeight: 500,
+              fontSize: "0.95rem",
+            }}
+          >
+            View Operational Package →
           </Link>
         </div>
       )}

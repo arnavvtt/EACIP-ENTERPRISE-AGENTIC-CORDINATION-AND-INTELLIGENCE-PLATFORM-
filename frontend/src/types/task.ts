@@ -1,138 +1,122 @@
-// =====================================================================
-// Tasks (Stage 3)
-// =====================================================================
+import { apiClient } from "./client";
+import type {
+  ContextWorkspaceResponse,
+  CorrelationListResponse,
+  IdentifyRequirementsResponse,
+  RetrievedRecordListResponse,
+  RunCorrelationResponse,
+  RunRetrievalResponse,
+  TaskCreate,
+  TaskListResponse,
+  TaskRequirementListResponse,
+  TaskResponse,
+} from "../types/task";
 
-export interface TaskCreate {
-  title: string;
-  description: string;
-  use_case?: string | null;
-}
+export const tasksApi = {
+  create: async (data: TaskCreate): Promise<TaskResponse> => {
+    const res = await apiClient.post<TaskResponse>("/tasks", data);
+    return res.data;
+  },
 
-export interface TaskResponse {
-  id: string;
-  title: string;
-  description: string;
-  use_case: string | null;
-  status: string;
-  intent: string | null;
-  task_metadata: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
+  list: async (limit = 100, offset = 0): Promise<TaskListResponse> => {
+    const res = await apiClient.get<TaskListResponse>("/tasks", {
+      params: { limit, offset },
+    });
+    return res.data;
+  },
 
-export interface TaskListResponse {
-  tasks: TaskResponse[];
-  total: number;
-}
+  get: async (id: string): Promise<TaskResponse> => {
+    const res = await apiClient.get<TaskResponse>(`/tasks/${id}`);
+    return res.data;
+  },
 
-// =====================================================================
-// Requirements (Stage 5)
-// =====================================================================
+  understand: async (id: string): Promise<TaskResponse> => {
+    const res = await apiClient.post<TaskResponse>(
+      `/tasks/${id}/understand`,
+    );
+    return res.data;
+  },
 
-export interface TaskRequirement {
-  id: string;
-  task_id: string;
-  requirement_type: string;
-  description: string;
-  is_mandatory: boolean;
-  source_hint: string | null;
-  priority: number;
-  requirement_metadata: Record<string, unknown>;
-}
+  identifyRequirements: async (
+    id: string,
+  ): Promise<IdentifyRequirementsResponse> => {
+    const res = await apiClient.post<IdentifyRequirementsResponse>(
+      `/tasks/${id}/identify-requirements`,
+    );
+    return res.data;
+  },
 
-export interface TaskRequirementListResponse {
-  requirements: TaskRequirement[];
-  total: number;
-}
+  getRequirements: async (
+    id: string,
+  ): Promise<TaskRequirementListResponse> => {
+    const res = await apiClient.get<TaskRequirementListResponse>(
+      `/tasks/${id}/requirements`,
+    );
+    return res.data;
+  },
 
-export interface IdentifyRequirementsResponse {
-  task_id: string;
-  total_requirements: number;
-  identified_at: string;
-}
+  retrieve: async (id: string): Promise<RunRetrievalResponse> => {
+    const res = await apiClient.post<RunRetrievalResponse>(
+      `/tasks/${id}/retrieve`,
+    );
+    return res.data;
+  },
 
-// =====================================================================
-// Retrieved Records (Stage 6)
-// =====================================================================
+  getRetrievedRecords: async (
+    id: string,
+  ): Promise<RetrievedRecordListResponse> => {
+    const res = await apiClient.get<RetrievedRecordListResponse>(
+      `/tasks/${id}/retrieved-records`,
+    );
+    return res.data;
+  },
 
-export interface RetrievedRecord {
-  id: string;
-  task_id: string;
-  requirement_id: string | null;
-  source_record_id: string;
-  retrieval_method: string;
-  relevance_score: number | null;
-  is_selected: boolean;
-  retrieval_metadata: {
-    source_key?: string;
-    record_type?: string;
-    external_id?: string;
-    match_reason?: string;
-    requirement_type?: string;
-  };
-}
+  correlate: async (id: string): Promise<RunCorrelationResponse> => {
+    const res = await apiClient.post<RunCorrelationResponse>(
+      `/tasks/${id}/correlate`,
+    );
+    return res.data;
+  },
 
-export interface RetrievedRecordListResponse {
-  records: RetrievedRecord[];
-  total: number;
-}
+  getCorrelations: async (id: string): Promise<CorrelationListResponse> => {
+    const res = await apiClient.get<CorrelationListResponse>(
+      `/tasks/${id}/correlations`,
+    );
+    return res.data;
+  },
 
-export interface RunRetrievalResponse {
-  task_id: string;
-  total_retrieved: number;
-  requirements_processed: number;
-  requirements_skipped: number;
-  sources_used: string[];
-  run_at: string;
-}
+  getContext: async (id: string): Promise<ContextWorkspaceResponse> => {
+    const res = await apiClient.get<ContextWorkspaceResponse>(
+      `/tasks/${id}/context`,
+    );
+    return res.data;
+  },
 
-// =====================================================================
-// Correlations (Stage 8)
-// =====================================================================
+  // ==========================================
+  // Stage 11 - Package
+  // ==========================================
+  generatePackage: async (id: string) => {
+    const res = await apiClient.post(`/tasks/${id}/generate-package`);
+    return res.data;
+  },
 
-export interface Correlation {
-  id: string;
-  task_id: string;
-  record_a_id: string;
-  record_b_id: string;
-  relationship_type: string;
-  basis: string;
-  confidence: number;
-  is_verified: boolean;
-  correlation_metadata: {
-    anchor_record_id?: string;
-    anchor_external_id?: string;
-    anchor_matched_field?: string;
-    anchor_matched_value?: string;
-    matched_value?: string;
-    matched_fields?: string[];
-    all_matched_values?: Array<{ field: string; value: string }>;
-    record_a_external_id?: string;
-    record_b_external_id?: string;
-    pair_kind?: "anchor" | "secondary";
-  };
-}
+  getPackage: async (id: string) => {
+    const res = await apiClient.get(`/tasks/${id}/package`);
+    return res.data;
+  },
 
-export interface CorrelationListResponse {
-  correlations: Correlation[];
-  total: number;
-}
-
-export interface RunCorrelationResponse {
-  task_id: string;
-  total_correlations: number;
-  anchor_external_id: string | null;
-  basis_breakdown: Record<string, number>;
-  run_at: string;
-}
-
-// =====================================================================
-// Context Workspace (Stage 7 + 8)
-// =====================================================================
-
-export interface ContextWorkspaceResponse {
-  task: TaskResponse;
-  requirements: TaskRequirement[];
-  retrieved_records: RetrievedRecord[];
-  correlations: Correlation[];
-}
+  // ==========================================
+  // Stage 12 - Human Review (NAYA)
+  // ==========================================
+  submitReview: async (
+    id: string,
+    decision: "approved" | "rejected",
+    comments: string,
+  ) => {
+    const res = await apiClient.post(`/tasks/${id}/review`, {
+      decision,
+      comments,
+    });
+    return res.data;
+  },
+};
