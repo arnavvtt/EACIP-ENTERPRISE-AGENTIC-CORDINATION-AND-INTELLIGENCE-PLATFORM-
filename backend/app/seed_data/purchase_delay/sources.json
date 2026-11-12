@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Procurement System",
+    "source_type": "structured_db",
+    "source_metadata": { "source_key": "procurement-db" }
+  }
+]

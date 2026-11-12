@@ -62,6 +62,13 @@ export const tasksApi = {
     return res.data;
   },
 
+  // 👇 YAHAN ADD KIYA HAI 👇
+  validate: async (id: string) => {
+    const res = await apiClient.post(`/tasks/${id}/validate`);
+    return res.data;
+  },
+  // 👆 ================= 👆
+
   getRetrievedRecords: async (
     id: string,
   ): Promise<RetrievedRecordListResponse> => {
@@ -92,7 +99,9 @@ export const tasksApi = {
     return res.data;
   },
 
+  // ==========================================
   // Stage 11 - Package
+  // ==========================================
   generatePackage: async (id: string) => {
     const res = await apiClient.post(`/tasks/${id}/generate-package`);
     return res.data;
@@ -103,7 +112,9 @@ export const tasksApi = {
     return res.data;
   },
 
-  // Stage 12 - Human Review (NAYA)
+  // ==========================================
+  // Stage 12 - Human Review
+  // ==========================================
   submitReview: async (
     id: string,
     decision: "approved" | "rejected",
@@ -113,6 +124,41 @@ export const tasksApi = {
       decision,
       comments,
     });
+    return res.data;
+  },
+
+  // ==========================================
+  // Stage 13 - LangGraph Agentic Workflow
+  // ==========================================
+  initiateWorkflow: async (id: string) => {
+    const res = await apiClient.post(`/tasks/${id}/initiate-workflow`);
+    return res.data;
+  },
+
+  getWorkflow: async (id: string) => {
+    const res = await apiClient.get(`/tasks/${id}/workflow`);
+    return res.data;
+  },
+
+  resumeWorkflow: async (
+    taskId: string, 
+    workflowId: string, 
+    decision: "approved" | "rejected", 
+    actionId: string
+  ) => {
+    const res = await apiClient.post(`/tasks/${taskId}/resume-workflow`, {
+      workflow_id: workflowId,
+      decision: decision,
+      action_id: actionId
+    });
+    return res.data;
+  },
+
+  // ==========================================
+  // Stage 14 - Audit Logs
+  // ==========================================
+  getAuditLogs: async (id: string) => {
+    const res = await apiClient.get(`/tasks/${id}/audit-logs`);
     return res.data;
   },
 };

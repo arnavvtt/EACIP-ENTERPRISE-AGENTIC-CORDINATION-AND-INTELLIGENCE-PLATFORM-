@@ -1,20 +1,14 @@
 """
-Task Understanding service.
-
-Orchestrates:
-    1. Fetch task
-    2. Call LLM provider
-    3. Save structured understanding back to the task
-    4. Return the updated task
-
-Transaction boundary lives here (service layer), as per EACIP architecture.
+Task Understanding Service (Stage 4).
 """
 
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm import LLMError, get_llm_provider
+from app.llm import get_llm_provider
+from app.llm.types import LLMError
 from app.models.task import Task
 from app.prompts import (
     build_task_understanding_system_prompt,
@@ -24,96 +18,70 @@ from app.repositories import TaskRepository
 from app.schemas.task_understanding import TaskUnderstanding
 
 
-class TaskUnderstandingError(Exception):
-    """Raised when task understanding fails."""
-
+class TaskNotFoundError(Exception):
+    """Raised when the requested task does not exist."""
     pass
 
 
-class TaskNotFoundError(TaskUnderstandingError):
-    """Raised when the task doesn't exist."""
-
+class TaskUnderstandingError(Exception):
+    """Raised when task understanding fails."""
     pass
 
 
 class TaskUnderstandingService:
-    """Service for understanding operational tasks."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.repo = TaskRepository(session)
+        self.task_repo = TaskRepository(session)
 
     async def understand_task(self, task_id: UUID) -> Task:
-        """
-        Run task understanding and persist the result.
-
-        Steps:
-        1. Fetch task (raise if not found)
-        2. Call LLM provider with task text
-        3. Update task.intent, task.use_case, task.task_metadata
-        4. Commit and return
-        """
-        # 1. Fetch task
-        task = await self.repo.get_by_id(task_id)
+        task = await self.task_repo.get_by_id(task_id)
         if task is None:
             raise TaskNotFoundError(f"Task {task_id} not found")
 
-        # 2. Call LLM
         provider = get_llm_provider()
+        
+        system_prompt = build_task_understanding_system_prompt()
+        # FIX: Removed 'provided_use_case' argument as the function doesn't accept it
         user_prompt = build_task_understanding_user_prompt(
             title=task.title,
             description=task.description,
-            use_case_hint=task.use_case,
         )
 
         try:
             understanding, meta = await provider.generate_structured(
-                system_prompt=build_task_understanding_system_prompt(),
+                system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 response_schema=TaskUnderstanding,
                 temperature=0.0,
+                max_tokens=1024,
             )
         except LLMError as e:
-            raise TaskUnderstandingError(f"LLM call failed: {e}") from e
+            raise TaskUnderstandingError(str(e)) from e
 
-        # 3. Persist understanding
-        self._apply_understanding(task, understanding, meta)
-
-        await self.session.commit()
-        await self.session.refresh(task)
-        return task
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-    def _apply_understanding(
-        self,
-        task: Task,
-        understanding: TaskUnderstanding,
-        meta,
-    ) -> None:
-        """
-        Merge the LLM understanding into the task.
-
-        - intent / use_case: overwrite with LLM output
-        - task_metadata: keep prior fields, add an "understanding" block
-        - task_metadata["user_provided_use_case"]: preserve the original
-          hint for audit (LLM output becomes authoritative).
-        """
+        # ==========================================
+        # CRITICAL FIX: Respect user's explicit use_case
+        # ==========================================
+        final_use_case = task.use_case
+        if not final_use_case:
+            # Only use the LLM's inference if user didn't provide one
+            final_use_case = understanding.use_case
+            
+        task.intent = understanding.intent
+        task.use_case = final_use_case
+        
+        # Update metadata
         metadata = dict(task.task_metadata or {})
-        if task.use_case and "user_provided_use_case" not in metadata:
-            metadata["user_provided_use_case"] = task.use_case
-
         metadata["understanding"] = {
             "summary": understanding.summary,
-            "entities": [e.model_dump() for e in understanding.entities],
             "confidence": understanding.confidence,
             "rationale": understanding.rationale,
             "provider": meta.provider,
             "model": meta.model,
             "latency_ms": meta.latency_ms,
+            "entities": [e.model_dump() for e in understanding.entities],
         }
-
-        task.intent = understanding.intent
-        task.use_case = understanding.use_case
         task.task_metadata = metadata
+
+        await self.session.commit()
+        await self.session.refresh(task)
+        return task

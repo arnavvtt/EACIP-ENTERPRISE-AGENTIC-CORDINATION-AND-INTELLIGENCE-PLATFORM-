@@ -1,0 +1,13 @@
+[
+  {
+    "external_id": "DOC-AADHAR-101",
+    "record_type": "certificate",
+    "source_key": "document-repo",
+    "data": {
+      "document_type": "Aadhar Card",
+      "employee_id": "EMP-101",
+      "name": "Rahul Sharma",
+      "status": "verified"
+    }
+  }
+]

@@ -1,0 +1,25 @@
+[
+  {
+    "external_id": "PO-9001",
+    "record_type": "purchase_order",
+    "source_key": "procurement-db",
+    "data": {
+      "po_number": "PO-9001",
+      "supplier_id": "S-1042",
+      "amount": 1500000,
+      "expected_delivery": "2026-11-10",
+      "status": "delayed"
+    }
+  },
+  {
+    "external_id": "SHIP-9001",
+    "record_type": "shipment",
+    "source_key": "procurement-db",
+    "data": {
+      "po_number": "PO-9001",
+      "location": "Mumbai Port",
+      "delay_reason": "Customs Clearance",
+      "estimated_days_late": 4
+    }
+  }
+]

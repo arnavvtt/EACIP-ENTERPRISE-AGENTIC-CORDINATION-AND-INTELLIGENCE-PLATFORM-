@@ -1,0 +1,13 @@
+[
+  {
+    "external_id": "IT-REQ-101",
+    "record_type": "it_request",
+    "source_key": "it-system",
+    "data": {
+      "employee_id": "EMP-101",
+      "name": "Rahul Sharma",
+      "item": "MacBook Pro M3",
+      "status": "pending_assignment"
+    }
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "external_id": "EMP-101",
+    "record_type": "employee",
+    "source_key": "hr-db",
+    "data": {
+      "employee_id": "EMP-101",
+      "name": "Rahul Sharma",
+      "role": "Software Engineer",
+      "joining_date": "2026-12-01",
+      "status": "pending_onboarding"
+    }
+  }
+]

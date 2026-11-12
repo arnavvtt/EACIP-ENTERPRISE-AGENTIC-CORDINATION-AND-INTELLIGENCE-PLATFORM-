@@ -1,0 +1,17 @@
+[
+  {
+    "name": "HR Database",
+    "source_type": "structured_db",
+    "source_metadata": { "source_key": "hr-db" }
+  },
+  {
+    "name": "IT Asset System",
+    "source_type": "structured_db",
+    "source_metadata": { "source_key": "it-system" }
+  },
+  {
+    "name": "Document Repository",
+    "source_type": "document_store",
+    "source_metadata": { "source_key": "document-repo" }
+  }
+]

@@ -3,20 +3,8 @@ Seed data loader.
 
 Loads simulated enterprise data from JSON files into the
 `sources` and `source_records` tables.
-
-Source identity:
-    Sources are uniquely identified by `source_metadata["source_key"]`
-    (canonical, e.g. "supplier-db"). Display names are human-readable
-    and may change; the source_key is stable and is what Stage 5
-    source_hints (and Stage 6 retrieval) resolve against.
-
-Usage (from container):
-    python -m app.seed_data.loader --use-case supplier_qualification
-
-Behavior:
-    Idempotent: existing source_records for the seeded sources are
-    deleted before re-insertion. Sources themselves are upserted by
-    source_key.
+Idempotent: Uses an upsert pattern (skip existing, insert new) 
+so multiple scopes can share sources (like document-repo) safely.
 """
 
 import argparse
@@ -25,21 +13,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
 from app.models.source import Source, SourceRecord
 
-
-# ---------------------------------------------------------------------
-# Paths + file map
-# ---------------------------------------------------------------------
-
 SEED_ROOT = Path(__file__).resolve().parent
 
-
-# For each use case: list of (json_filename, canonical_source_key)
+# NAYA: Added employee_onboarding and purchase_delay
 RECORD_FILES: dict[str, list[tuple[str, str]]] = {
     "supplier_qualification": [
         ("suppliers.json", "supplier-db"),
@@ -48,17 +30,19 @@ RECORD_FILES: dict[str, list[tuple[str, str]]] = {
         ("documents.json", "document-repo"),
         ("communications.json", "comms-archive"),
     ],
+    "employee_onboarding": [
+        ("employees.json", "hr-db"),
+        ("documents.json", "document-repo"),
+        ("it_requests.json", "it-system"),
+    ],
+    "purchase_delay": [
+        ("purchase_orders.json", "procurement-db"),
+    ]
 }
-
 
 def _load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
-
-
-# ---------------------------------------------------------------------
-# Loader
-# ---------------------------------------------------------------------
 
 async def load_use_case(use_case: str) -> None:
     if use_case not in RECORD_FILES:
@@ -72,40 +56,29 @@ async def load_use_case(use_case: str) -> None:
         source_map = await _upsert_sources(session, folder / "sources.json")
         print(f"[loader] Sources upserted: {len(source_map)}")
 
-        await _delete_existing_records(session, source_map)
-        print(f"[loader] Existing records deleted")
+        # REMOVED: _delete_existing_records (Ye data wipe kar raha tha)
 
         total_inserted = 0
         for filename, source_key in RECORD_FILES[use_case]:
+            file_path = folder / filename
+            if not file_path.exists():
+                print(f"[loader] Skipping missing file: {filename}")
+                continue
+
             source = source_map.get(source_key)
             if source is None:
-                raise ValueError(
-                    f"Source not found for key '{source_key}' "
-                    f"(file '{filename}')"
-                )
-            records = _load_json(folder / filename)
-            await _insert_records(session, source, records)
-            total_inserted += len(records)
-            print(
-                f"[loader] Inserted {len(records):>3} records "
-                f"from {filename} -> {source_key}"
-            )
+                raise ValueError(f"Source not found for key '{source_key}'")
+                
+            records = _load_json(file_path)
+            inserted = await _insert_records(session, source, records)
+            total_inserted += inserted
+            print(f"[loader] Processed {len(records):>3} records from {filename} -> {source_key} (Added {inserted})")
 
         await session.commit()
-        print(f"[loader] Done. Total records inserted: {total_inserted}")
+        print(f"[loader] Done. Total NEW records inserted: {total_inserted}")
 
-
-async def _upsert_sources(
-    session: AsyncSession, sources_file: Path
-) -> dict[str, Source]:
-    """
-    Upsert sources by `source_metadata["source_key"]`.
-
-    Returns: {source_key: Source}
-    """
+async def _upsert_sources(session: AsyncSession, sources_file: Path) -> dict[str, Source]:
     raw = _load_json(sources_file)
-
-    # Load all existing sources once and index by source_key
     result = await session.execute(select(Source))
     existing_by_key: dict[str, Source] = {}
     for s in result.scalars().all():
@@ -118,18 +91,12 @@ async def _upsert_sources(
         metadata = item.get("source_metadata", {}) or {}
         key = metadata.get("source_key")
         if not key:
-            raise ValueError(
-                f"Source '{item.get('name')}' missing source_metadata.source_key"
-            )
+            raise ValueError(f"Source '{item.get('name')}' missing source_key")
 
         existing = existing_by_key.get(key)
         if existing is not None:
-            # Refresh display fields (name/description may evolve)
             existing.name = item["name"]
             existing.source_type = item["source_type"]
-            existing.description = item.get("description")
-            existing.connection_info = item.get("connection_info", {})
-            existing.is_active = item.get("is_active", True)
             existing.source_metadata = metadata
             source_map[key] = existing
             continue
@@ -137,9 +104,6 @@ async def _upsert_sources(
         src = Source(
             name=item["name"],
             source_type=item["source_type"],
-            description=item.get("description"),
-            connection_info=item.get("connection_info", {}),
-            is_active=item.get("is_active", True),
             source_metadata=metadata,
         )
         session.add(src)
@@ -148,45 +112,43 @@ async def _upsert_sources(
 
     return source_map
 
+async def _insert_records(session: AsyncSession, source: Source, records: list[dict]) -> int:
+    """Upserts records (checks if external_id exists)."""
+    inserted_count = 0
+    
+    # Fetch existing records for this source
+    stmt = select(SourceRecord).where(SourceRecord.source_id == source.id)
+    existing_records = (await session.execute(stmt)).scalars().all()
+    existing_map = {r.external_id: r for r in existing_records}
 
-async def _delete_existing_records(
-    session: AsyncSession, source_map: dict[str, Source]
-) -> None:
-    """Delete all source_records for these sources (idempotent seeding)."""
-    source_ids = [s.id for s in source_map.values()]
-    if not source_ids:
-        return
-    await session.execute(
-        delete(SourceRecord).where(SourceRecord.source_id.in_(source_ids))
-    )
-
-
-async def _insert_records(
-    session: AsyncSession, source: Source, records: list[dict]
-) -> None:
     for rec in records:
-        session.add(
-            SourceRecord(
-                source_id=source.id,
-                external_id=rec["external_id"],
-                record_type=rec["record_type"],
-                data=rec.get("data", {}),
-                record_metadata=rec.get("record_metadata", {}),
+        if rec["external_id"] in existing_map:
+            # Update existing
+            existing = existing_map[rec["external_id"]]
+            existing.record_type = rec["record_type"]
+            existing.data = rec.get("data", {})
+            existing.record_metadata = rec.get("record_metadata", {})
+        else:
+            # Insert new
+            session.add(
+                SourceRecord(
+                    source_id=source.id,
+                    external_id=rec["external_id"],
+                    record_type=rec["record_type"],
+                    data=rec.get("data", {}),
+                    record_metadata=rec.get("record_metadata", {}),
+                )
             )
-        )
+            inserted_count += 1
+            
     await session.flush()
-
-
-# ---------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------
+    return inserted_count
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--use-case", required=True)
     args = parser.parse_args()
     asyncio.run(load_use_case(args.use_case))
-
 
 if __name__ == "__main__":
     main()

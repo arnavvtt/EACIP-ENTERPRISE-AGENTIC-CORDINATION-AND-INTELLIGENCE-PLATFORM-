@@ -1,31 +1,25 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator
 
-
+# FIX: Groq strict mode ke liye Flat Schema
 class LLMDecisionOutput(BaseModel):
-    """
-    Flat schema that Groq can easily validate.
-    All fields are required in the JSON schema, but we enforce logic via model_validator.
-    """
     model_config = ConfigDict(extra="forbid")
     
     tool: Literal["send_email", "assign_task", "update_database"]
-    reason: str = Field(..., min_length=10, description="Why this action was chosen")
+    reason: str = Field(..., min_length=10)
     
-    # Email params
-    recipient: EmailStr | None = Field(..., description="Valid email address. Required if tool=send_email, else null.")
-    subject: str | None = Field(..., description="Email subject. Required if tool=send_email, else null.")
-    body: str | None = Field(..., description="Email body. Required if tool=send_email, else null.")
+    # FIX: Changed to Field(...) to make them required in JSON schema
+    recipient: Optional[EmailStr] = Field(..., description="Required if tool=send_email, else null.")
+    subject: Optional[str] = Field(..., description="Required if tool=send_email, else null.")
+    body: Optional[str] = Field(..., description="Required if tool=send_email, else null.")
     
-    # Task params
-    role: str | None = Field(..., description="Role to assign. Required if tool=assign_task, else null.")
-    description: str | None = Field(..., description="Task description. Required if tool=assign_task, else null.")
+    role: Optional[str] = Field(..., description="Required if tool=assign_task, else null.")
+    description: Optional[str] = Field(..., description="Required if tool=assign_task, else null.")
     
-    # DB params
-    field: str | None = Field(..., description="Field to update. Required if tool=update_database, else null.")
-    new_value: str | None = Field(..., description="New value. Required if tool=update_database, else null.")
+    field: Optional[str] = Field(..., description="Required if tool=update_database, else null.")
+    new_value: Optional[str] = Field(..., description="Required if tool=update_database, else null.")
     
     @model_validator(mode="after")
     def validate_tool_params(self):
@@ -39,12 +33,23 @@ class LLMDecisionOutput(BaseModel):
             if not self.field or not self.new_value:
                 raise ValueError("field and new_value are required for update_database")
         return self
+# 3. Coordinator Schemas
+class SubTask(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    type: Literal["info_request", "exception_handling"]
+    description: str
 
+class CoordinatorPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reasoning: str
+    subtasks: list[SubTask]
 
+# 4. Backend State Object
 class ProposedAction(BaseModel):
-    """
-    Created by the BACKEND. Wraps the LLM decision with a unique action_id.
-    """
     action_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     action: LLMDecisionOutput
+    agent_source: str = Field(default="Coordinator")
+    subtask_id: Optional[str] = None
+    evidence: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
