@@ -26,7 +26,9 @@ class AgentState(TypedDict):
     agent_outputs: List[dict]
     
     pending_actions: List[dict]
-    approved_action_id: str | None  # NEW
+    approved_action_id: str | None
+    last_executed_action: dict | None
+    workflow_failed: bool   # NEW
     human_decision: str
     execution_result: str
 
@@ -71,6 +73,7 @@ async def coordinator_node(state: AgentState):
             "current_subtask_index": 0,
             "agent_outputs": [],
             "pending_actions": [],
+            "workflow_failed": False,
             "modified_data": None
         }
     except Exception as e:
@@ -185,14 +188,27 @@ async def consolidation_node(state: AgentState):
                 subtask_id=out["subtask"]["id"]
             )
             pending.append(proposed_action.model_dump(mode="json"))
+    
+    # NEW: Detect all-failed case
+    if not pending and agent_outputs:
+        return {
+            "pending_actions": [], 
+            "workflow_failed": True,
+            "execution_result": f"All {len(agent_outputs)} subtasks failed. No actions to execute."
+        }
             
     if not pending:
-        return {"pending_actions": [], "execution_result": "All subtasks failed or no valid actions generated."}
+        return {"pending_actions": [], "workflow_failed": False}
         
-    return {"pending_actions": pending}
+    return {"pending_actions": pending, "workflow_failed": False}
 
 async def validate_actions_node(state: AgentState):
     print("--- VALIDATING ACTIONS ---")
+    
+    # Skip if consolidation already marked failure
+    if state.get("workflow_failed", False):
+        return {}
+    
     pending = state.get("pending_actions", [])
     valid_actions = []
     
@@ -202,13 +218,20 @@ async def validate_actions_node(state: AgentState):
             valid_actions.append(p)
         except Exception as e:
             print(f"Validation failed for action: {e}")
-            
-    if not valid_actions:
-        return {"pending_actions": [], "execution_result": "No valid actions passed schema validation."}
+    
+    # NEW: If we had actions but all failed validation
+    if not valid_actions and pending:
+        return {
+            "pending_actions": [], 
+            "workflow_failed": True,
+            "execution_result": f"No valid actions passed schema validation (out of {len(pending)})."
+        }
         
     return {"pending_actions": valid_actions}
 
 def route_after_validation(state: AgentState):
+    if state.get("workflow_failed"):
+        return "end"
     if state.get("pending_actions"):
         return "human_approval"
     return "end"
@@ -234,7 +257,6 @@ async def human_interrupt_node(state: AgentState):
             "pending_actions": [] 
         }
     elif human_input == "approved":
-        # FIX: Store the approved action ID
         return {
             "human_decision": "approved",
             "approved_action_id": current_action.get("action_id")
@@ -260,7 +282,6 @@ async def executor_node(state: AgentState):
     if decision != "approved" or not pending:
         return {"execution_result": "Action was not approved or queue is empty."}
 
-    # FIX: Find the exact action that was approved
     current_action = None
     for a in pending:
         if a.get("action_id") == approved_id:
@@ -268,7 +289,6 @@ async def executor_node(state: AgentState):
             break
     
     if not current_action:
-        # Fallback to first if not found (should not happen)
         current_action = pending[0]
 
     action_data = current_action.get("action", {})
@@ -295,10 +315,14 @@ async def executor_node(state: AgentState):
     else:
         result = "Unknown tool."
 
-    # Remove the executed action from the queue
     remaining_pending = [a for a in pending if a.get("action_id") != approved_id]
     
-    return {"execution_result": result, "pending_actions": remaining_pending, "approved_action_id": None}
+    return {
+        "execution_result": result, 
+        "pending_actions": remaining_pending, 
+        "approved_action_id": None,
+        "last_executed_action": current_action
+    }
 
 def route_after_execution(state: AgentState):
     if state.get("pending_actions"):

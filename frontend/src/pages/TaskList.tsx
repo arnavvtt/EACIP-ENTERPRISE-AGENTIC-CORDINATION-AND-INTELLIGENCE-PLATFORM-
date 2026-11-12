@@ -1,84 +1,132 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Inbox } from "lucide-react";
 import { tasksApi } from "../api/tasks";
-import type { TaskResponse } from "../types/task";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+function statusVariant(status: string): "success" | "warning" | "destructive" | "info" | "muted" {
+  switch (status) {
+    case "approved": return "success";
+    case "rejected": return "destructive";
+    case "processing": return "info";
+    case "pending": return "warning";
+    case "ready": return "info";
+    default: return "muted";
+  }
+}
 
 export default function TaskList() {
-  const [tasks, setTasks] = useState<TaskResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => tasksApi.list(),
+  });
 
-  useEffect(() => {
-    tasksApi.list()
-      .then((res) => setTasks(res.tasks))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, any> = {
-      pending: { bg: "#fef3c7", text: "#92400e" },
-      approved: { bg: "#d1fae5", text: "#065f46" },
-      rejected: { bg: "#fee2e2", text: "#991b1b" },
-      completed: { bg: "#dbeafe", text: "#1e40af" },
-    };
-    const c = colors[status.toLowerCase()] || { bg: "#f1f5f9", text: "#475569" };
-    return <span style={{ padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: "bold", background: c.bg, color: c.text, textTransform: "uppercase" }}>{status}</span>;
-  };
-
-  if (loading) return <div style={{ textAlign: "center", padding: "3rem" }}>Loading dashboard...</div>;
+  const tasks = data?.tasks ?? [];
+  const total = data?.total ?? 0;
+  const pending = tasks.filter((t) => t.status === "pending" || t.status === "processing").length;
+  const approved = tasks.filter((t) => t.status === "approved").length;
+  const rejected = tasks.filter((t) => t.status === "rejected").length;
 
   return (
-    <div>
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Welcome to EACIP</h1>
-        <p style={{ color: "#64748b", marginTop: "0.5rem" }}>Manage your operational tasks and AI-driven workflows.</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Tasks</h1>
+          <p className="text-muted-foreground mt-1">Manage operational tasks and AI-driven workflows.</p>
+        </div>
+        <Button onClick={() => navigate("/tasks/new")}>
+          <Plus className="w-4 h-4 mr-2" /> New Task
+        </Button>
       </div>
 
-      <div style={{ background: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 3px 0 rgba(0,0,0,0.1)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-          <thead>
-            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              <th style={{ padding: "1rem 1.5rem", color: "#475569", fontSize: "0.85rem", fontWeight: "600", textTransform: "uppercase" }}>Task Title</th>
-              <th style={{ padding: "1rem 1.5rem", color: "#475569", fontSize: "0.85rem", fontWeight: "600", textTransform: "uppercase" }}>Scope</th>
-              <th style={{ padding: "1rem 1.5rem", color: "#475569", fontSize: "0.85rem", fontWeight: "600", textTransform: "uppercase" }}>Status</th>
-              <th style={{ padding: "1rem 1.5rem", color: "#475569", fontSize: "0.85rem", fontWeight: "600", textTransform: "uppercase" }}>Created At</th>
-              <th style={{ padding: "1rem 1.5rem" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
-                  No tasks found. Click "+ New Task" to create one.
-                </td>
-              </tr>
-            ) : (
-              tasks.map((task) => (
-                <tr key={task.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "1rem 1.5rem" }}>
-                    <div style={{ fontWeight: "600", color: "#0f172a" }}>{task.title}</div>
-                    <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.2rem", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{task.description}</div>
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem" }}>
-                    <span style={{ background: "#f1f5f9", color: "#334155", padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "500" }}>
-                      {task.use_case || "Generic"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem" }}>{getStatusBadge(task.status)}</td>
-                  <td style={{ padding: "1rem 1.5rem", fontSize: "0.9rem", color: "#64748b" }}>
-                    {new Date(task.created_at).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
-                    <Link to={`/tasks/${task.id}`} style={{ color: "#4f46e5", fontWeight: "600", fontSize: "0.9rem" }}>
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
+          </CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{total}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Processing</CardTitle>
+          </CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{pending}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+          </CardHeader>
+          <CardContent><div className="text-2xl font-semibold text-emerald-600">{approved}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Rejected</CardTitle>
+          </CardHeader>
+          <CardContent><div className="text-2xl font-semibold text-red-600">{rejected}</div></CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Tasks</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>
+          ) : isError ? (
+            <div className="p-8 text-center text-destructive">
+              Error: {(error as Error).message}
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="p-12 text-center">
+              <Inbox className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No tasks yet.</p>
+              <Button onClick={() => navigate("/tasks/new")}>Create your first task</Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Task</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Scope</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Created</th>
+                    <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {tasks.map((task) => (
+                    <tr key={task.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 max-w-md">
+                        <div className="font-medium text-foreground truncate">{task.title}</div>
+                        <div className="text-sm text-muted-foreground truncate">{task.description}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm capitalize">{task.use_case?.replace(/_/g, " ") ?? "—"}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={statusVariant(task.status)}>{task.status}</Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        {new Date(task.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/tasks/${task.id}`)}>
+                          View →
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

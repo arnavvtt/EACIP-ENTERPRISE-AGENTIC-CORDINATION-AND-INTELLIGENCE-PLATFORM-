@@ -1,166 +1,310 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  Bot, Mail, UserCheck, Database, CheckCircle2, XCircle,
+  AlertCircle, Loader2, ArrowLeft, Send, ShieldAlert, Clock
+} from "lucide-react";
 import { tasksApi } from "../api/tasks";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+type ProposedAction = {
+  action_id: string;
+  agent_source: string;
+  subtask_id: string;
+  action: {
+    tool: string;
+    reason: string;
+    recipient?: string | null;
+    subject?: string | null;
+    body?: string | null;
+    role?: string | null;
+    description?: string | null;
+    field?: string | null;
+    new_value?: string | null;
+  };
+  created_at: string;
+};
 
 export default function WorkflowDashboard() {
   const { id } = useParams<{ id: string }>();
-  const [workflow, setWorkflow] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [initiating, setInitiating] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
+  const qc = useQueryClient();
+  const [workflowState, setWorkflowState] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
-  const fetchWorkflow = async () => {
-    if (!id) return;
-    try {
-      const data = await tasksApi.getWorkflow(id);
-      setWorkflow(data);
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
-        setWorkflow(null);
+  const { data: currentWorkflow, isLoading } = useQuery({
+    queryKey: ["workflow", id],
+    queryFn: () => tasksApi.getWorkflow(id!),
+    enabled: !!id,
+    retry: 0,
+  });
+
+  const initiateMutation = useMutation({
+    mutationFn: () => tasksApi.initiateWorkflow(id!),
+    onSuccess: (data) => {
+      setWorkflowState(data);
+      qc.invalidateQueries({ queryKey: ["workflow", id] });
+      toast.success("Workflow initiated", { description: "Agent is analyzing the package." });
+    },
+    onError: (e: any) => toast.error("Failed to initiate", { description: e?.response?.data?.detail }),
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (payload: { decision: "approved" | "rejected"; action_id: string }) =>
+      tasksApi.resumeWorkflow(id!, workflowState.workflow_id, payload.decision, payload.action_id),
+    onSuccess: (data) => {
+      const prevAction = workflowState?.proposed_action;
+      if (prevAction) {
+        setHistory((h) => [...h, { ...prevAction, result: data.execution_result, decision: data.status === "rejected" ? "rejected" : "approved" }]);
       }
-    } finally {
-      setLoading(false);
-    }
+      if (data.status === "waiting_for_approval" && data.proposed_action) {
+        setWorkflowState(data);
+        toast.success("Action approved", { description: "Next action awaiting your review." });
+      } else if (data.status === "completed") {
+        setWorkflowState(data);
+        toast.success("Workflow completed", { description: data.execution_result });
+      } else if (data.status === "rejected") {
+        setWorkflowState(data);
+        toast.error("Workflow rejected");
+      } else if (data.status === "failed") {
+        setWorkflowState(data);
+        toast.error("Workflow failed", { description: data.execution_result });
+      }
+    },
+    onError: (e: any) => toast.error("Failed", { description: e?.response?.data?.detail }),
+  });
+
+  const workflow = workflowState || currentWorkflow;
+  const status = workflow?.status;
+  const proposed: ProposedAction | undefined = workflow?.proposed_action;
+
+  const agentIcon = (source: string) => {
+    if (source.toLowerCase().includes("exception")) return ShieldAlert;
+    if (source.toLowerCase().includes("information")) return Mail;
+    return Bot;
   };
 
-  useEffect(() => {
-    fetchWorkflow();
-  }, [id]);
-
-  const handleInitiate = async () => {
-    if (!id) return;
-    setInitiating(true);
-    try {
-      const res = await tasksApi.initiateWorkflow(id);
-      setWorkflow(res); // Set response (which contains proposed_action if paused)
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Failed to initiate workflow");
-    } finally {
-      setInitiating(false);
-    }
+  const toolIcon = (tool: string) => {
+    if (tool === "send_email") return Send;
+    if (tool === "assign_task") return UserCheck;
+    if (tool === "update_database") return Database;
+    return Bot;
   };
 
-  const handleDecision = async (decision: "approved" | "rejected") => {
-    if (!id || !workflow) return;
-    setReviewing(true);
-    try {
-      const actionId = workflow.proposed_action?.action_id;
-      const res = await tasksApi.resumeWorkflow(id, workflow.workflow_id, decision, actionId);
-      alert(`Workflow ${res.status}: ${res.execution_result || "Action processed."}`);
-      await fetchWorkflow(); // Reload to show completed/rejected status
-    } catch (err: any) {
-      alert("Failed to submit decision: " + (err?.response?.data?.detail || err.message));
-    } finally {
-      setReviewing(false);
-    }
-  };
-
-  if (loading) return <div style={{ padding: "2rem" }}>Loading...</div>;
-
-  // Helper to render dynamic AI action
-  const renderActionDetails = (actionData: any) => {
-    if (!actionData) return null;
-    const { tool, reason, ...params } = actionData;
-
-    return (
-      <div style={{ background: "#f9fafb", padding: "1rem", borderRadius: "6px", border: "1px solid #e5e7eb", marginTop: "1rem" }}>
-        <p><strong>AI Reasoning:</strong> {reason}</p>
-        <p><strong>Selected Tool:</strong> <span style={{ background: "#dbeafe", color: "#1e40af", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>{tool}</span></p>
-        
-        <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
-          {Object.entries(params).filter(([_, v]) => v !== null).map(([key, value]) => (
-            <div key={key} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.3rem" }}>
-              <span style={{ fontWeight: "bold", minWidth: "80px" }}>{key}:</span>
-              <span style={{ color: "#4b5563", whiteSpace: "pre-wrap" }}>{String(value)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-96">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto", fontFamily: "sans-serif" }}>
-      <Link to={`/tasks/${id}`} style={{ color: "#4f46e5", textDecoration: "none" }}>
-        ← Back to Task
-      </Link>
-      
-      <h1 style={{ marginTop: "1rem" }}>Agentic Coordination Dashboard</h1>
-      <p style={{ color: "#666", marginBottom: "2rem" }}>
-        Phase 2: Governed Operational Coordination (LangGraph + HITL)
-      </p>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div>
+        <Link to={`/tasks/${id}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Back to task
+        </Link>
+        <h1 className="text-3xl font-semibold tracking-tight mt-2">Agentic Coordination</h1>
+        <p className="text-muted-foreground mt-1">Multi-agent workflow with human-in-the-loop approval.</p>
+      </div>
 
-      {!workflow ? (
-        <div style={{ background: "#f9fafb", padding: "2rem", textAlign: "center", borderRadius: "8px", border: "1px dashed #ccc" }}>
-          <h3>No Workflow Initiated</h3>
-          <p style={{ color: "#666", marginBottom: "1.5rem" }}>
-            The LangGraph Agent will analyze the approved package and propose an action.
-          </p>
-          <button 
-            onClick={handleInitiate} 
-            disabled={initiating}
-            style={{ padding: "0.8rem 1.5rem", background: "#4f46e5", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
-          >
-            {initiating ? "Agent is thinking..." : "🤖 Initiate LangGraph Workflow"}
-          </button>
-        </div>
+      {/* Empty State */}
+      {!workflow || (workflow.status === "undefined" && !proposed) ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Bot className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No workflow initiated</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              The multi-agent system will analyze your approved package, decompose it into subtasks, and propose actions for human review.
+            </p>
+            <Button size="lg" onClick={() => initiateMutation.mutate()} disabled={initiateMutation.isPending}>
+              {initiateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Coordinating agents...</> : <><Bot className="w-4 h-4 mr-2" /> Initiate Workflow</>}
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div>
+        <>
           {/* Status Header */}
-          <div style={{ 
-            background: workflow.status === "completed" ? "#d1fae5" : (workflow.status === "rejected" ? "#fee2e2" : "#e0e7ff"), 
-            padding: "1rem", 
-            borderRadius: "8px", 
-            marginBottom: "2rem", 
-            borderLeft: `4px solid ${workflow.status === "completed" ? "#059669" : (workflow.status === "rejected" ? "#dc2626" : "#4f46e5")}` 
-          }}>
-            <p style={{ margin: 0 }}><strong>Workflow ID:</strong> {workflow.workflow_id}</p>
-            <p style={{ margin: "0.5rem 0 0 0" }}><strong>Status:</strong> <span style={{ textTransform: "uppercase", fontWeight: "bold" }}>{workflow.status}</span></p>
-          </div>
-
-          {/* Agent Interrupt / Action Card */}
-          {workflow.status === "waiting_for_approval" && workflow.proposed_action && (
-            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: "1.5rem", borderRadius: "8px" }}>
-              <h3 style={{ marginTop: 0, color: "#b45309" }}>🤖 Human Approval Required</h3>
-              <p>The LangGraph Agent is paused and waiting for your decision.</p>
-              
-              {renderActionDetails(workflow.proposed_action.action)}
-
-              <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-                <button 
-                  onClick={() => handleDecision("approved")}
-                  disabled={reviewing}
-                  style={{ padding: "0.6rem 1.2rem", background: "#059669", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
-                >
-                  {reviewing ? "Processing..." : "✅ Approve Action"}
-                </button>
-                <button 
-                  onClick={() => handleDecision("rejected")}
-                  disabled={reviewing}
-                  style={{ padding: "0.6rem 1.2rem", background: "#dc2626", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
-                >
-                  {reviewing ? "Processing..." : "❌ Reject Action"}
-                </button>
+          <Card className={cn(
+            "border-l-4",
+            status === "completed" && "border-l-emerald-500",
+            status === "rejected" && "border-l-red-500",
+            status === "failed" && "border-l-red-500",
+            status === "waiting_for_approval" && "border-l-amber-500",
+          )}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Workflow ID</p>
+                  <p className="font-mono text-sm">{workflow.workflow_id}</p>
+                </div>
+                <Badge variant={
+                  status === "completed" ? "success" :
+                  status === "rejected" || status === "failed" ? "destructive" :
+                  status === "waiting_for_approval" ? "warning" : "info"
+                } className="text-sm px-3 py-1">
+                  {status?.replace(/_/g, " ")}
+                </Badge>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Pending Approval */}
+          {status === "waiting_for_approval" && proposed && (
+            <Card className="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/10">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  <CardTitle className="text-base">Human Approval Required</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Agent Attribution */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(() => {
+                    const Icon = agentIcon(proposed.agent_source);
+                    return (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                        <Icon className="w-4 h-4" />
+                        {proposed.agent_source}
+                      </div>
+                    );
+                  })()}
+                  <Badge variant="muted" className="text-xs font-mono">{proposed.subtask_id}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Tool: {proposed.action.tool}
+                  </Badge>
+                </div>
+
+                {/* Reasoning */}
+                <div className="bg-background border border-border rounded-md p-4">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">AI Reasoning</p>
+                  <p className="text-sm">{proposed.action.reason}</p>
+                </div>
+
+                {/* Email Preview */}
+                {proposed.action.tool === "send_email" && (
+                  <div className="border border-border rounded-md overflow-hidden">
+                    <div className="bg-muted px-4 py-2 border-b border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Mail className="w-3 h-3" /> Email Preview
+                      </div>
+                      <Badge variant="warning" className="text-[10px]">SIMULATED</Badge>
+                    </div>
+                    <div className="p-4 space-y-2 bg-background">
+                      <div className="text-xs"><span className="text-muted-foreground">To:</span> <span className="font-medium">{proposed.action.recipient}</span></div>
+                      <div className="text-xs"><span className="text-muted-foreground">Subject:</span> <span className="font-medium">{proposed.action.subject}</span></div>
+                      <div className="border-t border-border pt-3 mt-3 text-sm whitespace-pre-wrap text-foreground">{proposed.action.body}</div>
+                    </div>
+                  </div>
+                )}
+
+                {proposed.action.tool === "assign_task" && (
+                  <div className="border border-border rounded-md p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><UserCheck className="w-3 h-3" /> Task Assignment</div>
+                    <div className="text-sm"><span className="text-muted-foreground">Role:</span> <span className="font-medium">{proposed.action.role}</span></div>
+                    <div className="text-sm"><span className="text-muted-foreground">Task:</span> {proposed.action.description}</div>
+                  </div>
+                )}
+
+                {proposed.action.tool === "update_database" && (
+                  <div className="border border-border rounded-md p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Database className="w-3 h-3" /> Database Update</div>
+                    <div className="text-sm"><span className="text-muted-foreground">Field:</span> <span className="font-mono">{proposed.action.field}</span></div>
+                    <div className="text-sm"><span className="text-muted-foreground">New value:</span> <span className="font-mono">{proposed.action.new_value}</span></div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => resumeMutation.mutate({ decision: "approved", action_id: proposed.action_id })}
+                    disabled={resumeMutation.isPending}
+                  >
+                    {resumeMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                    Approve
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => resumeMutation.mutate({ decision: "rejected", action_id: proposed.action_id })}
+                    disabled={resumeMutation.isPending}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" /> Reject
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Completed View */}
-          {workflow.status === "completed" && (
-            <div style={{ background: "#f0fdf4", padding: "1.5rem", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-              <h3 style={{ marginTop: 0, color: "#166534" }}>✅ Workflow Completed</h3>
-              <p>The agent executed the approved action successfully.</p>
-            </div>
+          {/* Completed */}
+          {status === "completed" && (
+            <Card className="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/10">
+              <CardContent className="p-8 text-center">
+                <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-600 mb-3" />
+                <h3 className="text-lg font-semibold mb-1">Workflow Completed</h3>
+                <p className="text-muted-foreground text-sm mb-1">{workflow.execution_result}</p>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Rejected View */}
-          {workflow.status === "rejected" && (
-            <div style={{ background: "#fee2e2", padding: "1.5rem", borderRadius: "8px", border: "1px solid #fca5a5" }}>
-              <h3 style={{ marginTop: 0, color: "#991b1b" }}>❌ Workflow Rejected</h3>
-              <p>The proposed action was rejected by the human. The agent has been stopped.</p>
-            </div>
+          {/* Rejected */}
+          {status === "rejected" && (
+            <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+              <CardContent className="p-8 text-center">
+                <XCircle className="w-12 h-12 mx-auto text-red-600 mb-3" />
+                <h3 className="text-lg font-semibold mb-1">Workflow Rejected</h3>
+                <p className="text-muted-foreground text-sm">The proposal was rejected. The workflow has stopped.</p>
+              </CardContent>
+            </Card>
           )}
-        </div>
+
+          {/* Failed */}
+          {status === "failed" && (
+            <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+              <CardContent className="p-8 text-center">
+                <AlertCircle className="w-12 h-12 mx-auto text-red-600 mb-3" />
+                <h3 className="text-lg font-semibold mb-1">Workflow Failed</h3>
+                <p className="text-muted-foreground text-sm">{workflow.execution_result || "One or more agents failed."}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Execution History */}
+          {history.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Execution History</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {history.map((h, i) => {
+                  const Icon = toolIcon(h.action?.tool);
+                  return (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-md border border-border bg-muted/30">
+                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                        h.decision === "rejected" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-sm font-medium">{h.action?.tool?.replace(/_/g, " ")}</span>
+                          <Badge variant={h.decision === "rejected" ? "destructive" : "success"} className="text-[10px]">{h.decision}</Badge>
+                          <span className="text-xs text-muted-foreground">by {h.agent_source}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{h.result || "No execution"}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
